@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Mente Quotidiano</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 15px; margin: 0; }
+        .box { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { color: #333; font-size: 1.2rem; margin-top: 5px; }
+        .btn { display: block; width: 100%; margin: 10px 0; padding: 12px; background: #e4e6eb; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; text-align: left; }
+        .btn:active { background: #d8dadf; }
+        #next-btn { background: #1877f2; color: white; text-align: center; display: none; font-weight: bold; }
+        #score-box, #serie-box { display: none; }
+        .info-tag { font-size: 0.85rem; color: #65676b; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="box" id="quiz-box">
+    <div class="info-tag" id="info-tag">Serie 1 - Domanda 1/3</div>
+    <h2 id="q-text">Caricamento...</h2>
+    <div id="opts"></div>
+    <button class="btn" id="next-btn" onclick="nextQ()">Avanti</button>
+</div>
+
+<div class="box" id="serie-box">
+    <h2>Serie Completata!</h2>
+    <p id="serie-msg">Ottimo lavoro. Sei pronto per la prossima sfida?</p>
+    <button class="btn" style="text-align:center; background:#1877f2; color:white; font-weight:bold;" onclick="avviaProssimaSerie()">Inizia Prossima Serie</button>
+</div>
+
+<div class="box" id="score-box">
+    <h2>Allenamento Quotidiano Finito!</h2>
+    <p>Punteggio Totale di Oggi:</p>
+    <h1 id="score-res" style="color:#1877f2; font-size: 3rem; margin:10px 0;">0 / 9</h1>
+    <button class="btn" style="text-align:center; background:#10b981; color:white;" onclick="startQuiz()">Riprova da capo oggi</button>
+</div>
+
+<script>
+    // Database suddiviso in 3 serie da 3 domande per i diversi giorni
+    const databaseQuotidiano = {
+        // Lunedì, Mercoledì, Venerdì e Domenica
+        dispari: {
+            s1: [
+                { q: "Se l'altro ieri era giovedì, che giorno sarà dopodomani?", o: ["Lunedì", "Martedì", "Domenica", "Sabato"], c: 0 },
+                { q: "Il padre di Renata ha 5 figlie: Nana, Nene, Nini, Nono. La quinta è?", o: ["Nunu", "Renata", "Nina", "Nona"], c: 1 },
+                { q: "Quale numero completa la serie logicamente? 2, 4, 8, 16, ...", o: ["20", "24", "32", "64"], c: 2 }
+            ],
+            s2: [
+                { q: "Alcuni mesi hanno 31 giorni, altri 30. Quanti ne hanno 28?", o: ["Tutti", "Uno solo", "Nessuno", "Quattro"], c: 0 },
+                { q: "Hai 1 solo fiammifero in una stanza buia con candela, lampada e legna. Cosa accendi prima?", o: ["La candela", "La lampada", "Il fiammifero", "La legna"], c: 2 },
+                { q: "Un pastore ha 17 pecore. Muoiono tutte tranne 9. Quante vive restano?", o: ["8", "9", "0", "17"], c: 1 }
+            ],
+            s3: [
+                { q: "Se dividi 30 per 0.5 e poi aggiungi 10, quanto fa?", o: ["25", "40", "70", "15"], c: 2 },
+                { q: "Un treno elettrico va a Nord. Da che parte va il fumo?", o: ["Sud", "Est", "Nessuna parte", "Ovest"], c: 2 },
+                { q: "Cosa diventa più bagnato quanto più si usa per asciugare?", o: ["La spugna", "L'asciugamano", "L'acqua", "Il phon"], c: 1 }
+            ]
+        },
+        // Martedì, Giovedì e Sabato
+        pari: {
+            s1: [
+                { q: "Quanti compleanni festeggia una persona media nella sua vita?", o: ["Uno all'anno", "Uno solo", "Dipende dagli anni bisestili", "Nessuno"], c: 1 },
+                { q: "Se un aereo si schianta sul confine italo-francese, dove si seppelliscono i superstiti?", o: ["In Italia", "In Francia", "Da nessuna parte", "Nel paese d'origine"], c: 2 },
+                { q: "Quanti animali per specie Mosè portò a bordo dell'arca?", o: ["Due", "Nessuno", "Sette", "Quattro"], c: 1 }
+            ],
+            s2: [
+                { q: "Quale parola diventa più corta se le aggiungi due lettere?", o: ["Corta", "Breve", "Piccola", "Nessuna"], c: 0 },
+                { q: "Se ieri era martedì, che giorno sarà il giorno prima di domani?", o: ["Mercoledì", "Giovedì", "Martedì", "Venerdì"], c: 0 },
+                { q: "Se hai 3 mele e ne prendi 2, quante mele hai?", o: ["1", "2", "3", "0"], c: 1 }
+            ],
+            s3: [
+                { q: "Cosa c'è al centro di Parigi?", o: ["La Torre Eiffel", "La Senna", "La lettera R", "Il Louvre"], c: 2 },
+                { q: "Se una scimmia, uno scoiattolo e un uccello corrono verso la cima di una palma da cocco, chi prende la banana per primo?", o: ["La scimmia", "Lo scoiattolo", "L'uccello", "Nessuno"], c: 3 },
+                { q: "Qual è il numero successivo nella serie? 1, 3, 5, 7, ...", o: ["8", "9", "11", "10"], c: 1 }
+            ]
+        }
+    };
+
+    let serieCorrente = 1;
+    let idxDomanda = 0;
+    let puntiTotali = 0;
+    let risposto = false;
+    let quizOggi = {};
+
+    function startQuiz() {
+        document.getElementById("quiz-box").style.display = "block";
+        document.getElementById("serie-box").style.display = "none";
+        document.getElementById("score-box").style.display = "none";
+
+        // Determina se il giorno del mese è pari o dispari per variare le domande quotidianamente
+        let giorno = new Date().getDate();
+        let dbSelezionato = (giorno % 2 === 0) ? databaseQuotidiano.pari : databaseQuotidiano.dispari;
+        
+        quizOggi = {
+            1: dbSelezionato.s1,
+            2: dbSelezionato.s2,
+            3: dbSelezionato.s3
+        };
+
+        serieCorrente = 1;
+        idxDomanda = 0;
+        puntiTotali = 0;
+        mostraDomanda();
+    }
+
+    function mostraDomanda() {
+        risposto = false;
+        document.getElementById("next-btn").style.display = "none";
+        
+        let lista = quizOggi[serieCorrente];
+        let d = lista[idxDomanda];
+        
+        document.getElementById("info-tag").innerText = "SERIE " + serieCorrente + " - DOMANDA " + (idxDomanda + 1) + "/3";
+        document.getElementById("q-text").innerText = d.q;
+        
+        let contenitore = document.getElementById("opts");
+        contenitore.innerHTML = "";
+        
+        d.o.forEach((opzione, i) => {
+            let b = document.createElement("button");
+            b.className = "btn";
+            b.innerText = opzione;
+            b.onclick = () => controlla(b, i);
+            contenitore.appendChild(b);
+        });
+    }
+
+    function controlla(bottone, scelto) {
+        if (risposto) return;
+        risposto = true;
+        
+        let d = quizOggi[serieCorrente][idxDomanda];
+        let bottoni = document.getElementById("opts").getElementsByTagName("button");
+        
+        if (scelto === d.c) {
+            bottone.style.background = "#d1fae5";
+            bottone.style.color = "#065f46";
+            puntiTotali++;
+        } else {
+            bottone.style.background = "#fee2e2";
+            bottone.style.color = "#991b1b";
+            bottoni[d.c].style.background = "#d1fae5";
+            bottoni[d.c].style.color = "#065f46";
+        }
+        document.getElementById("next-btn").style.display = "block";
+    }
+
+    function nextQ() {
+        idxDomanda++;
+        if (idxDomanda < 3) {
+            mostraDomanda();
+        } else {
+            if (serieCorrente < 3) {
+                document.getElementById("quiz-box").style.display = "none";
+                document.getElementById("serie-box").style.display = "block";
+                document.getElementById("serie-msg").innerText = "Hai completato la Serie " + serieCorrente + ". Ottimo ritmo, andiamo avanti!";
+            } else {
+                document.getElementById("quiz-box").style.display = "none";
+                document.getElementById("score-box").style.display = "block";
+                document.getElementById("score-res").innerText = puntiTotali + " / 9";
+            }
+        }
+    }
+
+    function avviaProssimaSerie() {
+        serieCorrente++;
+        idxDomanda = 0;
+        document.getElementById("serie-box").style.display = "none";
+        document.getElementById("quiz-box").style.display = "block";
+        mostraDomanda();
+    }
+
+    // Esecuzione immediata all'avvio
+    window.onload = function() {
+        startQuiz();
+        
+    };
+</script>
+</body>
+</html>
